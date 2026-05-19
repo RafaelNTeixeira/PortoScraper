@@ -22,11 +22,18 @@
 
     <dependencies>
 
-        <!-- HTML parsing: fetches and parses the page DOM -->
+        <!-- HTML parsing: fetches the page and finds the __NEXT_DATA__ script tag -->
         <dependency>
             <groupId>org.jsoup</groupId>
             <artifactId>jsoup</artifactId>
             <version>1.17.2</version>
+        </dependency>
+
+        <!-- JSON parsing: navigates the __NEXT_DATA__ blob to extract listings -->
+        <dependency>
+            <groupId>com.google.code.gson</groupId>
+            <artifactId>gson</artifactId>
+            <version>2.10.1</version>
         </dependency>
 
         <!-- Logging: clean console output instead of raw System.out -->
@@ -55,7 +62,6 @@
                                     <mainClass>com.porto.scraper.Main</mainClass>
                                 </transformer>
                             </transformers>
-                            <!-- Silence the shade plugin's output jar warning -->
                             <createDependencyReducedPom>false</createDependencyReducedPom>
                         </configuration>
                     </execution>
