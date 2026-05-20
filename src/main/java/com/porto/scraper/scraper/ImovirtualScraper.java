@@ -57,7 +57,7 @@ public class ImovirtualScraper {
 
     // -- Next.js data extraction -------------------------------------------
     private static final String NEXT_DATA_SELECTOR = "script#__NEXT_DATA__";
-    private static final String BASE_LISTING_URL   = "https://www.imovirtual.com/annonce/";
+    private static final String BASE_LISTING_URL   = "https://www.imovirtual.com/pt/anuncio/";
 
     // -- HTTP settings -----------------------------------------------------
     private static final String USER_AGENT =
