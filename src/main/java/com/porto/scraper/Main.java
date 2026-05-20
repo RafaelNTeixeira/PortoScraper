@@ -1,8 +1,7 @@
 package com.porto.scraper;
 
+import com.porto.scraper.config.AppConfig;
 import com.porto.scraper.config.SearchTarget;
-import com.porto.scraper.config.UrlBuilder;
-import com.porto.scraper.config.UrlBuilder.Zone;
 import com.porto.scraper.database.ListingRepository;
 import com.porto.scraper.notification.DiscordNotifier;
 import com.porto.scraper.scheduler.ScraperJob;
@@ -25,61 +24,38 @@ import java.util.concurrent.TimeUnit;
 public class Main {
 
     private static final Logger log = LoggerFactory.getLogger(Main.class);
-
-    // ══════════════════════════════════════════════════════════════════════
-    //  SCHEDULER CONFIG
-    // ══════════════════════════════════════════════════════════════════════
-
-    /** How often to scrape, in minutes. */
-    private static final int POLL_INTERVAL_MINUTES = 5;
-
-    // ══════════════════════════════════════════════════════════════════════
-    //  DISCORD - paste your webhook URL here or leave null to disable
-    // ══════════════════════════════════════════════════════════════════════
-
-    private static final String DISCORD_WEBHOOK_URL =
-            null; // e.g. "https://discord.com/api/webhooks/1234567890/xxxx"
-
-    // ══════════════════════════════════════════════════════════════════════
-    //  YOUR SEARCH TARGETS - edit freely
-    // ══════════════════════════════════════════════════════════════════════
-
-    private static final List<SearchTarget> SEARCH_TARGETS = List.of(
-
-            // -- BUYING --------------------------------------------------------
-            new UrlBuilder().buy().houses().inZone(Zone.PORTO).maxPrice(350_000).build(),
-            new UrlBuilder().buy().apartments().inZone(Zone.MATOSINHOS).maxPrice(280_000).build(),
-            new UrlBuilder().buy().houses().inZone(Zone.GAIA).maxPrice(320_000).build(),
-            new UrlBuilder().buy().houses().inZone(Zone.MAIA).maxPrice(280_000).build(),
-
-            // -- RENTING -------------------------------------------------------
-            new UrlBuilder().rent().apartments().inZone(Zone.PORTO).minPrice(600).maxPrice(1_200).build(),
-            new UrlBuilder().rent().apartments().inZone(Zone.MATOSINHOS).maxPrice(1_100).build()
-
-            // new UrlBuilder().buy().houses().inZone(Zone.BRAGA).maxPrice(200_000).build(),
-    );
-
-    // ══════════════════════════════════════════════════════════════════════
+    private static final DateTimeFormatter TIME_FMT = DateTimeFormatter.ofPattern("HH:mm:ss");
 
     public static void main(String[] args) {
 
+        // -- Load config ---------------------------------------------------
+        AppConfig config = new AppConfig();
+
+        int              pollMinutes = config.getPollIntervalMinutes();
+        String           webhookUrl  = config.getDiscordWebhookUrl();
+        List<SearchTarget> targets   = config.getSearchTargets();
+
+        if (targets.isEmpty()) {
+            log.error("No search targets configured. Edit scraper.properties and restart.");
+            return;
+        }
+
         log.info("═══════════════════════════════════════════");
         log.info("         Porto Real Estate Scraper         ");
-        log.info("         Polling every {} minutes          ", POLL_INTERVAL_MINUTES);
+        log.info("         Polling every {} minute(s)        ", pollMinutes);
+        log.info("         {} search target(s) loaded        ", targets.size());
         log.info("═══════════════════════════════════════════");
 
         // -- Discord -------------------------------------------------------
         DiscordNotifier discord = null;
-        if (DISCORD_WEBHOOK_URL != null) {
-            discord = new DiscordNotifier(DISCORD_WEBHOOK_URL);
+        if (webhookUrl != null) {
+            discord = new DiscordNotifier(webhookUrl);
             log.info("Discord notifications: ENABLED");
         } else {
-            log.info("Discord notifications: DISABLED");
+            log.info("Discord notifications: DISABLED (add discord.webhook.url to scraper.properties)");
         }
 
         // -- Database ------------------------------------------------------
-        // Opened once and shared across all scheduled runs.
-        // Closed cleanly in the shutdown hook below.
         final ListingRepository db;
         try {
             db = new ListingRepository();
@@ -88,40 +64,32 @@ public class Main {
             return;
         }
 
-        // -- Job -----------------------------------------------------------
-        final DiscordNotifier finalDiscord = discord;
-        ScraperJob job = new ScraperJob(SEARCH_TARGETS, db, finalDiscord);
-
         // -- Scheduler -----------------------------------------------------
-        // Single-threaded: runs are sequential, never overlap.
+        final DiscordNotifier finalDiscord = discord;
+        ScraperJob job = new ScraperJob(targets, db, finalDiscord);
+
         ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor(r -> {
             Thread t = new Thread(r, "scraper-thread");
-            t.setDaemon(false); // keep JVM alive while this thread runs
+            t.setDaemon(false);
             return t;
         });
 
-        // Fire immediately, then every POLL_INTERVAL_MINUTES minutes
         scheduler.scheduleAtFixedRate(
-                () -> {
-                    job.run();
-                    logNextRun();
-                },
-                0,                       // initial delay: 0 = run right now
-                POLL_INTERVAL_MINUTES,
+                () -> { job.run(); logNextRun(pollMinutes); },
+                0,
+                pollMinutes,
                 TimeUnit.MINUTES
         );
 
-        log.info("Scheduler started. First run beginning now…");
+        log.info("Scheduler started - first run beginning now.");
         log.info("Press Ctrl+C to stop.");
 
-        // -- Graceful shutdown on Ctrl+C -----------------------------------
+        // -- Graceful shutdown ---------------------------------------------
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-            log.info("Shutdown signal received - stopping scheduler…");
+            log.info("Shutting down…");
             scheduler.shutdown();
             try {
-                if (!scheduler.awaitTermination(30, TimeUnit.SECONDS)) {
-                    scheduler.shutdownNow();
-                }
+                if (!scheduler.awaitTermination(30, TimeUnit.SECONDS)) scheduler.shutdownNow();
                 db.close();
                 log.info("Shutdown complete.");
             } catch (Exception e) {
@@ -130,12 +98,7 @@ public class Main {
         }, "shutdown-hook"));
     }
 
-    // -- Helpers -----------------------------------------------------------
-
-    private static final DateTimeFormatter TIME_FMT = DateTimeFormatter.ofPattern("HH:mm:ss");
-
-    private static void logNextRun() {
-        LocalTime next = LocalTime.now().plusMinutes(POLL_INTERVAL_MINUTES);
-        log.info("Next run scheduled at {}", next.format(TIME_FMT));
+    private static void logNextRun(int pollMinutes) {
+        log.info("Next run at {}", LocalTime.now().plusMinutes(pollMinutes).format(TIME_FMT));
     }
 }
