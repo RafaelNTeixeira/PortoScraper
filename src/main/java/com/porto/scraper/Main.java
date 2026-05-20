@@ -5,6 +5,7 @@ import com.porto.scraper.config.UrlBuilder;
 import com.porto.scraper.config.UrlBuilder.Zone;
 import com.porto.scraper.database.ListingRepository;
 import com.porto.scraper.model.Listing;
+import com.porto.scraper.notification.DiscordNotifier;
 import com.porto.scraper.scraper.ImovirtualScraper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -14,12 +15,18 @@ import java.util.List;
 
 /**
  * ╔══════════════════════════════════════════════════════════════╗
- *                   Porto Real Estate Scraper
+ *                    Porto Real Estate Scraper
  * ╚══════════════════════════════════════════════════════════════╝
  */
 public class Main {
 
     private static final Logger log = LoggerFactory.getLogger(Main.class);
+
+    // ══════════════════════════════════════════════════════════════════════
+    //  DISCORD - paste your webhook URL here
+    // ══════════════════════════════════════════════════════════════════════
+
+    private static final String DISCORD_WEBHOOK_URL = null; // e.g. "https://discord.com/api/webhooks/1234567890/xxxx"
 
     // ══════════════════════════════════════════════════════════════════════
     //  YOUR SEARCH TARGETS - edit freely
@@ -48,7 +55,15 @@ public class Main {
         log.info("         Porto Real Estate Scraper         ");
         log.info("═══════════════════════════════════════════");
 
-        // try-with-resources: DB connection closes cleanly even on crash
+        // Set up the Discord notifier (null = notifications disabled)
+        DiscordNotifier discord = null;
+        if (DISCORD_WEBHOOK_URL != null) {
+            discord = new DiscordNotifier(DISCORD_WEBHOOK_URL);
+            log.info("Discord notifications: ENABLED");
+        } else {
+            log.info("Discord notifications: DISABLED (set DISCORD_WEBHOOK_URL to enable)");
+        }
+
         try (ListingRepository db = new ListingRepository()) {
 
             log.info("Database contains {} previously seen listing(s)", db.totalSeen());
@@ -74,23 +89,25 @@ public class Main {
                 for (Listing listing : listings) {
 
                     if (!db.isNew(listing.getId())) {
-                        // Already seen - skip silently
-                        // (change to log.debug if you want to see skips)
-                        continue;
+                        continue; // already seen
                     }
 
                     // -- NEW LISTING ---------------------------------------
                     newCount++;
 
-                    // 1. Show it
+                    // 1. Print to console
                     System.out.println("  🆕 [" + target.getLabel() + "]");
                     System.out.println("  " + listing);
                     System.out.println();
 
-                    // 2. Save it <- after printing, so a crash doesn't hide it
+                    // 2. Save to DB (before notifying, so a webhook failure
+                    //    doesn't cause duplicate notifications on retry)
                     db.markSeen(listing, "imovirtual");
 
-                    // Phase 3: Discord notification goes here
+                    // 3. Send Discord notification
+                    if (discord != null) {
+                        discord.notify(listing, target.getLabel());
+                    }
                 }
             }
 
@@ -98,8 +115,7 @@ public class Main {
             System.out.println();
             log.info("═══════════════════════════════════════════");
             log.info("  {} scraped across {} target(s)", totalCount, SEARCH_TARGETS.size());
-            log.info("  {} new  |  {} already seen",
-                    newCount, totalCount - newCount);
+            log.info("  {} new  |  {} already seen", newCount, totalCount - newCount);
             log.info("  {} total in database", db.totalSeen());
             log.info("═══════════════════════════════════════════");
 
