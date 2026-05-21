@@ -112,7 +112,9 @@ In your Discord server, create a private channel for alerts (e.g. `#porto-listin
 
 Right-click the channel name -> **Edit Channel** -> **Integrations** -> **Webhooks** -> **New Webhook**.
 
-![Discord Webhook Setup](images/img-2.png)
+<p align="center"> 
+  <img src="images/img-2.png" width="75%" > 
+</p>
 
 ### Step 3 - Copy the URL
 
