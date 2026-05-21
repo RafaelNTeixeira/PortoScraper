@@ -13,8 +13,8 @@ import java.util.*;
  * -----------------------------------------------------------------
  *  FILE LOOKUP ORDER
  * -----------------------------------------------------------------
- *  1. ./scraper.properties  (same folder as the JAR)
- *  2. classpath:/scraper.properties                   (bundled fallback)
+ *  1. ./scraper.properties          (same folder as the JAR)
+ *  2. classpath:/scraper.properties (bundled fallback)
  *
  *  The external file always wins, so you can override bundled
  *  defaults by placing a scraper.properties next to the JAR.
@@ -24,7 +24,7 @@ public class AppConfig {
     private static final Logger log = LoggerFactory.getLogger(AppConfig.class);
 
     private static final String CONFIG_FILE    = "scraper.properties";
-    private static final int    DEFAULT_POLL   = 5;
+    private static final int    DEFAULT_POLL   = 7;
 
     private final Properties props;
 
@@ -51,7 +51,7 @@ public class AppConfig {
                 props.load(in);
                 log.info("Config loaded from classpath (bundled defaults).");
             } else {
-                log.warn("No {} found — using built-in defaults.", CONFIG_FILE);
+                log.warn("No {} found - using built-in defaults.", CONFIG_FILE);
             }
         } catch (IOException e) {
             log.warn("Failed to load bundled config: {}", e.getMessage());
@@ -114,10 +114,11 @@ public class AppConfig {
             String transaction = get(prefix + "transaction");
             String property    = get(prefix + "property");
             String zone        = get(prefix + "zone");
+            String sourceStr   = get(prefix + "source"); // optional, defaults to IMOVIRTUAL
 
             // Validate required fields
             if (transaction == null || property == null || zone == null) {
-                log.warn("Target {} is missing required fields (transaction/property/zone) — skipping.", i);
+                log.warn("Target {} is missing required fields (transaction/property/zone) - skipping.", i);
                 continue;
             }
 
@@ -132,12 +133,22 @@ public class AppConfig {
             try {
                 UrlBuilder builder = new UrlBuilder();
 
+                // Source (optional - defaults to IMOVIRTUAL)
+                if (sourceStr != null) {
+                    switch (sourceStr.toUpperCase()) {
+                        case "IMOVIRTUAL" -> builder.source(UrlBuilder.Source.IMOVIRTUAL);
+                        case "IDEALISTA"  -> builder.source(UrlBuilder.Source.IDEALISTA);
+                        default -> throw new IllegalArgumentException(
+                                "Unknown source '" + sourceStr + "' - use IMOVIRTUAL or IDEALISTA");
+                    }
+                }
+
                 // Transaction
                 switch (transaction.toUpperCase()) {
                     case "BUY"  -> builder.buy();
                     case "RENT" -> builder.rent();
                     default     -> throw new IllegalArgumentException(
-                            "Unknown transaction '" + transaction + "' — use BUY or RENT");
+                            "Unknown transaction '" + transaction + "' - use BUY or RENT");
                 }
 
                 // Property type
@@ -146,7 +157,7 @@ public class AppConfig {
                     case "HOUSE"     -> builder.houses();
                     case "LAND"      -> builder.land();
                     default          -> throw new IllegalArgumentException(
-                            "Unknown property '" + property + "' — use APARTMENT, HOUSE, or LAND");
+                            "Unknown property '" + property + "' - use APARTMENT, HOUSE, or LAND");
                 }
 
                 // Zone
@@ -155,7 +166,7 @@ public class AppConfig {
                     z = UrlBuilder.Zone.valueOf(zone.toUpperCase());
                 } catch (IllegalArgumentException e) {
                     throw new IllegalArgumentException(
-                            "Unknown zone '" + zone + "' — see scraper.properties for the full list");
+                            "Unknown zone '" + zone + "' - see scraper.properties for the full list");
                 }
                 builder.inZone(z);
 
@@ -170,7 +181,7 @@ public class AppConfig {
                 targets.add(builder.build());
 
             } catch (IllegalArgumentException e) {
-                log.warn("Target {} is invalid — skipping. Reason: {}", i, e.getMessage());
+                log.warn("Target {} is invalid - skipping. Reason: {}", i, e.getMessage());
             }
         }
 
@@ -196,7 +207,7 @@ public class AppConfig {
         try {
             return Integer.parseInt(val);
         } catch (NumberFormatException e) {
-            log.warn("Config key '{}' has non-integer value '{}' — ignoring.", key, val);
+            log.warn("Config key '{}' has non-integer value '{}' - ignoring.", key, val);
             return null;
         }
     }

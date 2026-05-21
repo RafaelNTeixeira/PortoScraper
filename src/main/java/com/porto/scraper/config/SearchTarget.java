@@ -1,33 +1,21 @@
 package com.porto.scraper.config;
 
-/**
- * One search job: a human-readable label + the Imovirtual URL to scrape.
- *
- * Build instances via {@link UrlBuilder} — don't construct URLs by hand.
- *
- * Example:
- *   SearchTarget t = new UrlBuilder()
- *       .buy()
- *       .houses()
- *       .inZone(Zone.MATOSINHOS)
- *       .maxPrice(250_000)
- *       .build();
- */
 public class SearchTarget {
 
-    private final String label;  // shown in console output, e.g. "BUY | House | Matosinhos"
-    private final String url;    // full Imovirtual search URL
+    private final String            label;
+    private final String            url;
+    private final UrlBuilder.Source source;
 
-    public SearchTarget(String label, String url) {
-        this.label = label;
-        this.url   = url;
+    public SearchTarget(String label, String url, UrlBuilder.Source source) {
+        this.label  = label;
+        this.url    = url;
+        this.source = source;
     }
 
-    public String getLabel() { return label; }
-    public String getUrl()   { return url; }
+    public String            getLabel()  { return label;  }
+    public String            getUrl()    { return url;    }
+    public UrlBuilder.Source getSource() { return source; }
 
     @Override
-    public String toString() {
-        return label + " -> " + url;
-    }
+    public String toString() { return label + " -> " + url; }
 }

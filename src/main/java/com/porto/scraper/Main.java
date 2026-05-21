@@ -16,11 +16,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
-/**
- * ╔══════════════════════════════════════════════════════════════╗
- *                   Porto Real Estate Scraper
- * ╚══════════════════════════════════════════════════════════════╝
- */
 public class Main {
 
     private static final Logger log = LoggerFactory.getLogger(Main.class);

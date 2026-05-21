@@ -21,28 +21,37 @@
 
     <dependencies>
 
-        <!-- HTML parsing: fetches the page and finds the __NEXT_DATA__ script tag -->
+        <!-- Jsoup: fetches and parses Imovirtual (__NEXT_DATA__ JSON) -->
         <dependency>
             <groupId>org.jsoup</groupId>
             <artifactId>jsoup</artifactId>
             <version>1.17.2</version>
         </dependency>
 
-        <!-- JSON parsing: reads the __NEXT_DATA__ blob to extract listings -->
+        <!-- Gson: parses the __NEXT_DATA__ JSON blob -->
         <dependency>
             <groupId>com.google.code.gson</groupId>
             <artifactId>gson</artifactId>
             <version>2.10.1</version>
         </dependency>
 
-        <!-- SQLite: zero-config local database, single file, no server needed -->
+        <!-- Selenium: drives headless Chrome for Idealista (Cloudflare bypass) -->
+        <!-- Selenium 4.6+ includes Selenium Manager - downloads chromedriver  -->
+        <!-- automatically. You just need Chrome installed on the machine.      -->
+        <dependency>
+            <groupId>org.seleniumhq.selenium</groupId>
+            <artifactId>selenium-java</artifactId>
+            <version>4.21.0</version>
+        </dependency>
+
+        <!-- SQLite: local deduplication database, zero config -->
         <dependency>
             <groupId>org.xerial</groupId>
             <artifactId>sqlite-jdbc</artifactId>
             <version>3.45.3.0</version>
         </dependency>
 
-        <!-- Logging: api + impl must be the same version -->
+        <!-- Logging -->
         <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-api</artifactId>

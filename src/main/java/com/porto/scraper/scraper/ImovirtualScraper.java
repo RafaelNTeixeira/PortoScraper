@@ -15,56 +15,21 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Scrapes Imovirtual by reading the __NEXT_DATA__ JSON blob embedded in
- * every page by Next.js, not by parsing DOM elements.
- *
- * -----------------------------------------------------------------
- *  WHY __NEXT_DATA__ INSTEAD OF CSS SELECTORS
- * -----------------------------------------------------------------
- *  Imovirtual is a React/Next.js app. The listing cards you see in the
- *  browser are rendered by JavaScript AFTER the page loads. Jsoup only
- *  gets the raw HTML the server sends, no JS execution, so the cards
- *  are never there for CSS selectors to find.
- *
- *  However, Next.js does something useful: it serialises all server-side
- *  data into a <script id="__NEXT_DATA__" type="application/json"> tag
- *  in the raw HTML. That tag IS visible to Jsoup. We parse its JSON
- *  content and walk the object tree to reach the listings array.
- *
- * -----------------------------------------------------------------
- *  JSON PATH WE FOLLOW
- * -----------------------------------------------------------------
- *  __NEXT_DATA__
- *    .props
- *      .pageProps
- *        .data
- *          .searchAds
- *            .items[]          <- each element is one listing
- *              .id             <- unique listing ID
- *              .slug           <- used to build the listing URL
- *              .title
- *              .totalPrice.value / .totalPrice.currency
- *              .location.address.city.name
- *              .location.address.street.name  (optional)
- *
- *  If Imovirtual restructures their JSON, update the path constants below.
- * -----------------------------------------------------------------
- */
-public class ImovirtualScraper {
+public class ImovirtualScraper implements Scraper {
 
     private static final Logger log = LoggerFactory.getLogger(ImovirtualScraper.class);
 
-    // -- Next.js data extraction -------------------------------------------
-    private static final String NEXT_DATA_SELECTOR = "script#__NEXT_DATA__";
+    private static final String IMOVIRTUAL_BASE    = "https://www.imovirtual.com";
     private static final String BASE_LISTING_URL   = "https://www.imovirtual.com/pt/anuncio/";
+    private static final String NEXT_DATA_SELECTOR = "script#__NEXT_DATA__";
 
-    // -- HTTP settings -----------------------------------------------------
     private static final String USER_AGENT =
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) " +
                     "AppleWebKit/537.36 (KHTML, like Gecko) " +
                     "Chrome/124.0.0.0 Safari/537.36";
     private static final int TIMEOUT_MS = 15_000;
+
+    private static final boolean DEBUG_FIRST_ITEM = false;
 
     private final String searchUrl;
 
@@ -72,13 +37,11 @@ public class ImovirtualScraper {
         this.searchUrl = searchUrl;
     }
 
-    // -- Public API --------------------------------------------------------
-
+    @Override
     public List<Listing> scrape() {
         List<Listing> results = new ArrayList<>();
-
         try {
-            log.info("Fetching: {}", searchUrl);
+            log.info("  [Imovirtual] Fetching: {}", searchUrl);
 
             Document doc = Jsoup.connect(searchUrl)
                     .userAgent(USER_AGENT)
@@ -88,172 +51,118 @@ public class ImovirtualScraper {
                     .timeout(TIMEOUT_MS)
                     .get();
 
-            // -- Step 1: find the __NEXT_DATA__ script tag -----------------
             Element nextDataScript = doc.selectFirst(NEXT_DATA_SELECTOR);
             if (nextDataScript == null) {
-                log.error("__NEXT_DATA__ script tag not found.");
-                log.error("The page structure may have changed, or a CAPTCHA was served.");
-                log.debug("Page title: {}", doc.title());
+                log.error("  [Imovirtual] __NEXT_DATA__ tag not found.");
                 return results;
             }
 
-            // -- Step 2: parse the JSON ------------------------------------
-            String json = nextDataScript.html();
-            JsonObject root = JsonParser.parseString(json).getAsJsonObject();
+            JsonObject root  = JsonParser.parseString(nextDataScript.html()).getAsJsonObject();
+            JsonArray  items = resolveItemsArray(root);
 
-            // -- Step 3: navigate the object tree to the items array -------
-            JsonArray items = resolveItemsArray(root);
             if (items == null) {
-                log.error("Could not locate listings array in __NEXT_DATA__.");
-                log.error("Imovirtual may have changed their JSON structure.");
-                log.debug("Top-level keys: {}", root.keySet());
+                log.error("  [Imovirtual] Listings array not found in __NEXT_DATA__.");
                 return results;
             }
 
-            log.info("Found {} listing(s) in __NEXT_DATA__", items.size());
+            log.info("  [Imovirtual] Found {} item(s)", items.size());
 
-            // -- Step 4: map each JSON object to a Listing -----------------
+            boolean debugDone = false;
             for (JsonElement el : items) {
-                Listing listing = parseListing(el.getAsJsonObject());
-                if (listing != null) {
-                    results.add(listing);
+                JsonObject item = el.getAsJsonObject();
+                if (DEBUG_FIRST_ITEM && !debugDone) {
+                    log.info("=== DEBUG keys: {}", item.keySet());
+                    log.info("=== DEBUG item: {}", item);
+                    debugDone = true;
                 }
+                Listing listing = parseListing(item);
+                if (listing != null) results.add(listing);
             }
 
         } catch (IOException e) {
-            log.error("Network error fetching page: {}", e.getMessage());
+            log.error("  [Imovirtual] Network error: {}", e.getMessage());
         } catch (Exception e) {
-            log.error("Unexpected error during scrape: {}", e.getMessage(), e);
+            log.error("  [Imovirtual] Unexpected error: {}", e.getMessage(), e);
         }
-
         return results;
     }
 
-    // -- Private: JSON navigation ------------------------------------------
-
-    /**
-     * Walks the __NEXT_DATA__ tree to find the items array.
-     * Returns null if the path doesn't resolve (site may have restructured).
-     *
-     * Primary path:   props → pageProps → data → searchAds → items
-     * Fallback path:  props → pageProps → listings → results   (older layout)
-     */
     private JsonArray resolveItemsArray(JsonObject root) {
-
-        // -- Primary path (current layout) ---------------------------------
         try {
-            return root
-                    .getAsJsonObject("props")
+            return root.getAsJsonObject("props")
                     .getAsJsonObject("pageProps")
                     .getAsJsonObject("data")
                     .getAsJsonObject("searchAds")
                     .getAsJsonArray("items");
-        } catch (Exception ignored) {
-            log.debug("Primary JSON path failed, trying fallback…");
-        }
-
-        // -- Fallback path (older / alternate layout) ----------------------
+        } catch (Exception ignored) {}
         try {
-            return root
-                    .getAsJsonObject("props")
+            return root.getAsJsonObject("props")
                     .getAsJsonObject("pageProps")
                     .getAsJsonObject("listings")
                     .getAsJsonArray("results");
-        } catch (Exception ignored) {
-            log.debug("Fallback JSON path also failed.");
-        }
-
+        } catch (Exception ignored) {}
         return null;
     }
 
-    /**
-     * Maps one JSON listing object to a {@link Listing}.
-     * Returns null if required fields are missing.
-     */
     private Listing parseListing(JsonObject item) {
         try {
-            // -- ID ---------------------------------------------------------
             String id = getString(item, "id");
-            if (id == null) return null;
+            if (id == null) {
+                log.warn("  [Imovirtual] Skipping item - no id. Keys: {}", item.keySet());
+                return null;
+            }
 
-            // -- Slug → URL -------------------------------------------------
-            String slug = getString(item, "slug");
-            String url  = (slug != null)
-                    ? BASE_LISTING_URL + slug
-                    : getString(item, "url");  // some items carry a direct url field
-            if (url == null) url = BASE_LISTING_URL + id;
-
-            // -- Title ------------------------------------------------------
+            String url   = resolveUrl(item, id);
             String title = getString(item, "title");
             if (title == null) title = "No title";
 
-            // -- Price ------------------------------------------------------
-            String price = parsePrice(item);
-
-            // -- Location ---------------------------------------------------
-            String location = parseLocation(item);
-
-            return new Listing(id, title, price, location, url);
+            return new Listing(id, title, parsePrice(item), parseLocation(item), url);
 
         } catch (Exception e) {
-            log.debug("Failed to parse a listing item: {}", e.getMessage());
+            log.warn("  [Imovirtual] Failed to parse item: {} - {}", e.getClass().getSimpleName(), e.getMessage());
             return null;
         }
     }
 
+    private String resolveUrl(JsonObject item, String id) {
+        String href = getString(item, "href");
+        if (href != null && !href.isBlank()) {
+            String path = href.replace("[lang]", "pt");
+            if (!path.startsWith("/")) path = "/" + path;
+            return IMOVIRTUAL_BASE + path;
+        }
+        String slug = getString(item, "slug");
+        if (slug != null && !slug.isBlank()) return BASE_LISTING_URL + slug;
+        return IMOVIRTUAL_BASE;
+    }
+
     private String parsePrice(JsonObject item) {
         try {
-            JsonObject totalPrice = item.getAsJsonObject("totalPrice");
-            if (totalPrice == null) {
-                // Some listings nest it differently
-                totalPrice = item.getAsJsonObject("price");
-            }
-            if (totalPrice == null) return "Price N/A";
-
-            String value    = getString(totalPrice, "value");
-            String currency = getString(totalPrice, "currency");
-            String suffix   = getString(totalPrice, "period"); // e.g. "MONTH" for rentals
-
+            JsonObject p = item.getAsJsonObject("totalPrice");
+            if (p == null) p = item.getAsJsonObject("rentPrice");
+            if (p == null) return "Price N/A";
+            String value    = getString(p, "value");
+            String currency = getString(p, "currency");
             if (value == null) return "Price N/A";
-
             String display = value + " " + (currency != null ? currency : "€");
-            if ("MONTH".equalsIgnoreCase(suffix)) display += "/mês";
+            if ("RENT".equalsIgnoreCase(getString(item, "transaction"))) display += "/mês";
             return display;
-
-        } catch (Exception e) {
-            return "Price N/A";
-        }
+        } catch (Exception e) { return "Price N/A"; }
     }
 
     private String parseLocation(JsonObject item) {
         try {
-            JsonObject location = item.getAsJsonObject("location");
-            if (location == null) return "Location N/A";
-
-            JsonObject address = location.getAsJsonObject("address");
-            if (address == null) return "Location N/A";
-
-            String city   = null;
-            String street = null;
-
-            JsonObject cityObj = address.getAsJsonObject("city");
-            if (cityObj != null) city = getString(cityObj, "name");
-
-            JsonObject streetObj = address.getAsJsonObject("street");
-            if (streetObj != null) street = getString(streetObj, "name");
-
-            if (street != null && city != null) return street + ", " + city;
-            if (city != null) return city;
-            return "Location N/A";
-
-        } catch (Exception e) {
-            return "Location N/A";
-        }
+            JsonObject address = item.getAsJsonObject("location").getAsJsonObject("address");
+            String city = null, street = null;
+            JsonElement ce = address.get("city");
+            JsonElement se = address.get("street");
+            if (ce != null && ce.isJsonObject()) city   = getString(ce.getAsJsonObject(), "name");
+            if (se != null && se.isJsonObject()) street = getString(se.getAsJsonObject(), "name");
+            if (street != null && !street.isBlank() && city != null) return street + ", " + city;
+            return city != null ? city : "Location N/A";
+        } catch (Exception e) { return "Location N/A"; }
     }
 
-    // -- Utility -----------------------------------------------------------
-
-    /** Safely reads a string field from a JsonObject; returns null if absent. */
     private String getString(JsonObject obj, String key) {
         JsonElement el = obj.get(key);
         if (el == null || el.isJsonNull()) return null;
