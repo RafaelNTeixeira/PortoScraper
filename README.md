@@ -6,7 +6,7 @@
 
 ## The Problem
 
-Finding a house or apartment in the Porto district is genuinely brutal. The moment a good listing appears, it gets flooded with messages within the hour. If you rely on the official email alerts from Imovirtual or Idealista, you're already hours behind the people who refresh the page manually.
+Finding a house or apartment in the Porto district under optimal price conditions is genuinely brutal. The moment a good listing appears, it gets flooded with messages within the hour. If you rely on the official email alerts from Imovirtual or Idealista, you're already hours behind the people who refresh the page manually.
 
 ## The Solution
 
