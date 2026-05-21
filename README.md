@@ -1,5 +1,3 @@
-![img.png](images/img.png)
-
 # 🏠 Porto Real Estate Scraper
 
 > Never miss a listing again. A lightweight Java background service that watches Imovirtual and Idealista 24/7 and pings your Discord the moment something new appears.
@@ -12,40 +10,23 @@ Finding a house or apartment in the Porto district is genuinely brutal. The mome
 
 ## The Solution
 
-This scraper runs silently in the background, checking your saved searches every 7 minutes (configurable). The instant a listing appears that matches your criteria, you get a Discord notification on your phone with the direct link — before anyone else.
+This scraper runs silently in the background, checking your saved searches every 5 minutes (configurable). The instant a listing appears that matches your criteria, you get a Discord notification on your phone with the direct link - before anyone else.
 
-- **Imovirtual** — scraped via the embedded `__NEXT_DATA__` JSON (fast, no browser needed)
-- **Idealista** — scraped via headless Chrome (Selenium), bypassing Cloudflare protection
-- **SQLite database** — remembers every listing it's ever seen, so you only get notified once per listing
-- **Discord webhook** — rich embed notifications with price, location, and a direct link
-- **Config file** — change zones, prices, and intervals without touching any code
+- **Imovirtual** - scraped via the embedded `__NEXT_DATA__` JSON (fast, no browser needed)
+- **Idealista** - scraped via headless Chrome (Selenium), as JavaScript execution is needed due to Cloudflare 
+- **SQLite database** - remembers every listing it's ever seen, so you only get notified once per listing
+- **Discord webhook** - rich embed notifications with price, location, and a direct link
+- **Config file** - change zones, prices and intervals without touching any code
 
 ---
 
 ## Screenshots
 
-**Discord notification:**
-```
-🏠  T3 Moradia em Matosinhos              [BUY | House | Matosinhos | €–280000]
-─────────────────────────────────────────────────────
-💶 Price          📍 Location         🏷️ Type
-265 000 EUR       Moreira, Maia       For Sale
+### Discord notification
+![img.png](images/img.png)
 
-🔗  View on Imovirtual →
-```
-
-**Console output:**
-```
-[scraper-thread] INFO  Starting scrape run
-[scraper-thread] INFO  ┌─ [Imovirtual] BUY | House | Porto | €–350000
-[scraper-thread] INFO  └─ 36 scraped — checking DB…
-  🆕 [Imovirtual] BUY | House | Porto | €–350000
-  [19153032] Moradia T3 em Campanhã | 285 000 EUR | Campanhã, Porto
-  → https://www.imovirtual.com/pt/anuncio/moradia-t3-campanha-ID1imzS
-
-[scraper-thread] INFO  ✅ 1 new listing(s) found!
-[scraper-thread] INFO  Next run at 14:23:05
-```
+### Console output
+![img.png](images/img-1.png)
 
 ---
 
@@ -56,7 +37,7 @@ This scraper runs silently in the background, checking your saved searches every
 | Java (JDK) | 17 or higher | [Download](https://adoptium.net/) |
 | Maven | 3.8+ | [Download](https://maven.apache.org/download.cgi) |
 | Google Chrome | Any recent | Required for Idealista only |
-| Discord account | — | Free, for notifications |
+| Discord account | - | Free, for notifications |
 
 > **Chromedriver** is downloaded automatically by Selenium Manager on first run. You don't need to install it manually.
 
@@ -67,8 +48,8 @@ This scraper runs silently in the background, checking your saved searches every
 ### 1. Clone or download the project
 
 ```bash
-git clone https://github.com/yourname/porto-scraper.git
-cd porto-scraper
+git clone https://github.com/RafaelNTeixeira/PortoScraper.git
+cd PortoScraper
 ```
 
 Or just unzip the project folder if you downloaded it directly.
@@ -79,7 +60,7 @@ Open `scraper.properties` (in the project root) and edit it to match what you're
 
 ```properties
 # How often to check, in minutes
-poll.interval.minutes=7
+poll.interval.minutes=5
 
 # Your Discord webhook URL (see setup guide below)
 discord.webhook.url=https://discord.com/api/webhooks/YOUR_ID/YOUR_TOKEN
@@ -111,11 +92,11 @@ mvn clean package
 # Foreground (you can see the logs)
 java -jar target/real-estate-scraper-1.0-SNAPSHOT.jar
 
-# Background / invisible (Windows — keeps running after you close the terminal)
+# Background / invisible (Windows - keeps running after you close the terminal)
 javaw -jar target/real-estate-scraper-1.0-SNAPSHOT.jar
 ```
 
-To stop a background run: **Task Manager → find `javaw.exe` → End Task.**
+To stop a background run: **Task Manager -> find `javaw.exe` -> End Task.**
 
 ---
 
@@ -123,21 +104,21 @@ To stop a background run: **Task Manager → find `javaw.exe` → End Task.**
 
 You need to create a webhook in a Discord channel. It takes about 2 minutes.
 
-### Step 1 — Create a channel
+### Step 1 - Create a channel
 
 In your Discord server, create a private channel for alerts (e.g. `#porto-listings`). You can also use an existing channel or your own DMs via a private server.
 
-### Step 2 — Open Integrations
+### Step 2 - Open Integrations
 
-Right-click the channel name → **Edit Channel** → **Integrations** → **Webhooks** → **New Webhook**.
+Right-click the channel name -> **Edit Channel** -> **Integrations** -> **Webhooks** -> **New Webhook**.
 
-![Discord Webhook Setup](https://i.imgur.com/example.png)
+![Discord Webhook Setup](images/img-2.png)
 
-### Step 3 — Copy the URL
+### Step 3 - Copy the URL
 
 Give the webhook a name (e.g. "Porto Scraper 🏠"), optionally set an avatar, then click **Copy Webhook URL**.
 
-### Step 4 — Paste into scraper.properties
+### Step 4 - Paste into scraper.properties
 
 ```properties
 discord.webhook.url=https://discord.com/api/webhooks/1234567890/xxxxxxxxxxxxxxxxxxxxxxxxxxxx
@@ -153,14 +134,14 @@ Restart the scraper. The next time a new listing is found, a message will appear
 
 ### scraper.properties
 
-| Key | Default | Description |
-|---|---|---|
-| `poll.interval.minutes` | `7` | How often to scrape. Lower = faster alerts, higher chance of rate limiting |
+| Key | Default   | Description |
+|---|-----------|---|
+| `poll.interval.minutes` | `5`       | How often to scrape. Lower = faster alerts, higher chance of rate limiting |
 | `discord.webhook.url` | *(blank)* | Your Discord webhook. Leave blank to disable notifications |
 
 ### Search targets
 
-Each target is defined by a set of `target.N.*` keys. `N` is any number — gaps are fine.
+Each target is defined by a set of `target.N.*` keys. `N` is any number - gaps are fine.
 
 | Key | Required | Values |
 |---|---|---|
@@ -196,7 +177,7 @@ Each target is defined by a set of `target.N.*` keys. `N` is any number — gaps
 
 ```
 ┌─────────────────────────────────────────────────────┐
-│                  Scheduler (every 7 min)             │
+│                  Scheduler (every 5 min)             │
 └──────────────────────────┬──────────────────────────┘
                            │
           ┌────────────────┴────────────────┐
@@ -205,11 +186,11 @@ Each target is defined by a set of `target.N.*` keys. `N` is any number — gaps
    │  Imovirtual  │                  │   Idealista  │
    │   (Jsoup)    │                  │  (Selenium)  │
    │              │                  │              │
-   │ Reads hidden │                  │ Launches     │
-   │ __NEXT_DATA__│                  │ headless     │
-   │ JSON in page │                  │ Chrome,      │
-   │              │                  │ bypasses     │
-   │              │                  │ Cloudflare   │
+   │ Reads hidden │                  │   Launches   │
+   │ __NEXT_DATA__│                  │   headless   │
+   │ JSON in page │                  │ Chrome, for  │
+   │              │                  │  JavaScript  │
+   │              │                  │   execution  │
    └──────┬───────┘                  └──────┬───────┘
           │                                 │
           └────────────────┬────────────────┘
@@ -219,9 +200,9 @@ Each target is defined by a set of `target.N.*` keys. `N` is any number — gaps
                   │  (scraper.db)   │
                   │                 │
                   │  Already seen?  │
-                  │  → Skip         │
+                  │  -> Skip         │
                   │  New listing?   │
-                  │  → Save + Alert │
+                  │  -> Save + Alert │
                   └────────┬────────┘
                            │
                   ┌────────▼────────┐
@@ -235,9 +216,9 @@ Each target is defined by a set of `target.N.*` keys. `N` is any number — gaps
 
 ### Why two different scraping methods?
 
-**Imovirtual** is built with Next.js. It embeds all its listing data as a JSON blob inside a hidden `<script>` tag on every page. Jsoup reads this directly without needing a browser — it's fast and reliable.
+**Imovirtual** is built with Next.js. It embeds all its listing data as a JSON blob inside a hidden `<script>` tag on every page. Jsoup reads this directly without needing a browser - it's fast and reliable.
 
-**Idealista** uses Cloudflare bot protection that serves a JavaScript challenge to any request that doesn't come from a real browser. Selenium launches an actual headless Chrome instance which executes the challenge, loads the full page, and returns the rendered HTML for parsing.
+**Idealista** uses Cloudflare bot protection that serves a JavaScript challenge to any request that doesn't come from a real browser. Selenium launches an actual headless Chrome instance which executes the challenge, loads the full page and returns the rendered HTML for parsing.
 
 ---
 
@@ -254,7 +235,7 @@ start "Porto Scraper" /B javaw -jar real-estate-scraper-1.0-SNAPSHOT.jar
 echo Scraper started in background.
 ```
 
-Double-click it to launch. To stop it: Task Manager → Details tab → find `javaw.exe` → End Task.
+Double-click it to launch. To stop it: Task Manager -> Details tab -> find `javaw.exe` -> End Task.
 
 ### Linux / macOS
 
@@ -274,7 +255,7 @@ kill $(cat scraper.pid)
 
 ## Viewing the Database
 
-The scraper stores every listing it has seen in `scraper.db` (created automatically next to the JAR). You can inspect it with [DB Browser for SQLite](https://sqlitebrowser.org/) — free, no setup needed.
+The scraper stores every listing it has seen in `scraper.db` (created automatically next to the JAR). You can inspect it with [DB Browser for SQLite](https://sqlitebrowser.org/) - free, no setup needed.
 
 Useful queries:
 
@@ -305,11 +286,11 @@ DELETE FROM seen_listings;
 
 **No listings from Idealista (403 or timeout)**
 - Make sure Google Chrome is installed.
-- Try increasing `poll.interval.minutes` — too-frequent requests can trigger rate limits.
+- Try increasing `poll.interval.minutes` - too-frequent requests can trigger rate limits.
 - On first run, Selenium Manager downloads `chromedriver`. This requires internet access and may take ~30 seconds.
 
 **Discord notifications not sending**
-- Double-check the webhook URL in `scraper.properties` — it should start with `https://discord.com/api/webhooks/`.
+- Double-check the webhook URL in `scraper.properties` - it should start with `https://discord.com/api/webhooks/`.
 - Make sure there are no extra spaces or line breaks around the URL.
 
 **`scraper.properties` not being picked up**
@@ -322,42 +303,42 @@ DELETE FROM seen_listings;
 
 ```
 real-estate-scraper/
-├── scraper.properties              ← your config (edit this)
-├── scraper.db                      ← auto-created SQLite database
+├── scraper.properties              <- your config (edit this)
+├── scraper.db                      <- auto-created SQLite database
 ├── pom.xml
 └── src/main/java/com/porto/scraper/
-    ├── Main.java                   ← startup & scheduler
+    ├── Main.java                   <- startup & scheduler
     ├── config/
-    │   ├── AppConfig.java          ← loads scraper.properties
-    │   ├── SearchTarget.java       ← one search job (label + URL + source)
-    │   └── UrlBuilder.java         ← builds Imovirtual & Idealista URLs
+    │   ├── AppConfig.java          <- loads scraper.properties
+    │   ├── SearchTarget.java       <- one search job (label + URL + source)
+    │   └── UrlBuilder.java         <- builds Imovirtual & Idealista URLs
     ├── database/
-    │   └── ListingRepository.java  ← SQLite deduplication
+    │   └── ListingRepository.java  <- SQLite deduplication
     ├── model/
-    │   └── Listing.java            ← data class
+    │   └── Listing.java            <- data class
     ├── notification/
-    │   └── DiscordNotifier.java    ← Discord webhook client
+    │   └── DiscordNotifier.java    <- Discord webhook client
     ├── scheduler/
-    │   └── ScraperJob.java         ← one full scrape cycle
+    │   └── ScraperJob.java         <- one full scrape cycle
     └── scraper/
-        ├── Scraper.java            ← common interface
-        ├── BrowserPool.java        ← manages headless Chrome
-        ├── ImovirtualScraper.java  ← Jsoup + __NEXT_DATA__ JSON
-        └── IdealistaScraper.java   ← Selenium WebDriver
+        ├── Scraper.java            <- common interface
+        ├── BrowserPool.java        <- manages headless Chrome
+        ├── ImovirtualScraper.java  <- Jsoup + __NEXT_DATA__ JSON
+        └── IdealistaScraper.java   <- Selenium WebDriver
 ```
 
 ---
 
 ## Built With
 
-- [Jsoup](https://jsoup.org/) — HTML fetching and parsing
-- [Gson](https://github.com/google/gson) — JSON parsing
-- [Selenium WebDriver](https://www.selenium.dev/) — headless Chrome automation
-- [SQLite JDBC](https://github.com/xerial/sqlite-jdbc) — local database
-- [SLF4J](https://www.slf4j.org/) — logging
+- [Jsoup](https://jsoup.org/) - HTML fetching and parsing
+- [Gson](https://github.com/google/gson) - JSON parsing
+- [Selenium WebDriver](https://www.selenium.dev/) - headless Chrome automation
+- [SQLite JDBC](https://github.com/xerial/sqlite-jdbc) - local database
+- [SLF4J](https://www.slf4j.org/) - logging
 
 All free and open source.
 
 ---
 
-*Built to solve a real problem: finding a home in one of Portugal's most competitive rental and buying markets.*
+*Built to solve a real problem: finding a home in Portugal that matches the user's needs in this economy.*
