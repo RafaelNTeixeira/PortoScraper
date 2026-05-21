@@ -24,7 +24,7 @@ public class AppConfig {
     private static final Logger log = LoggerFactory.getLogger(AppConfig.class);
 
     private static final String CONFIG_FILE    = "scraper.properties";
-    private static final int    DEFAULT_POLL   = 7;
+    private static final int    DEFAULT_POLL   = 5;
 
     private final Properties props;
 

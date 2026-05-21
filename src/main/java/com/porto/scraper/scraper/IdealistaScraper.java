@@ -144,7 +144,7 @@ public class IdealistaScraper implements Scraper {
 
     /**
      * Extracts the listing ID from an Idealista href.
-     * /imovel/34799836/  →  "34799836"
+     * /imovel/34799836/ -> "34799836"
      */
     private String extractId(String href) {
         if (href == null || href.isBlank()) return null;
